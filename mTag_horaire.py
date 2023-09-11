@@ -160,7 +160,7 @@ def handle_response(response):
     try:
         json_response = response.json()
     except:
-        print("No JSON was found in response")
+        print("[mTagPython] API is Broken")
         exit(0)
     return json_response
 
@@ -237,20 +237,27 @@ def get_bus_times(json_list):
 
 def print_to_home_from_work():
     stop_id_to_home = 'SEM:4527'  #ID OF INRIA STOP TOWARDS MY HOME STOP
-    stop_id_to_INRIA = 'SEM:1990' #ID OF MY HOME STOP TOWARDS INRIA STOP
+    stop_id_to_INRIA = 'SEM:0393' #ID OF MY HOME STOP TOWARDS INRIA STOP
     final_str = ""
 
     response = request_stoptimes(stop_id_to_home)
     json_response = handle_response(response)
     bus_times_to_home = get_bus_times(json_response)
-
-    final_str += print_custom(json_response, bus_times_to_home, False) + " - "
-
+    #print(json_response)
+    if(len(bus_times_to_home) != 0):
+        final_str += print_custom(json_response, bus_times_to_home, False) + " - "
+    else:
+        final_str += "BROKEN_API_TO_HOME"
     response = request_stoptimes(stop_id_to_INRIA)
     json_response = handle_response(response)
+    #print(json_response)
+
     bus_times_to_INRIA = get_bus_times(json_response)
 
-    final_str += print_custom(json_response, bus_times_to_INRIA, True)
+    if(len(bus_times_to_INRIA) != 0):
+        final_str += print_custom(json_response, bus_times_to_INRIA, True)
+    else:
+        final_str += "BROKEN_API_TO_HOME"
     return final_str
 ###
 

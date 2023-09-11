@@ -20,7 +20,7 @@ You just need to modify your i3 config file (may be any of the following):
 - ~/.i3status.conf
 - /etc/i3status.conf
 
-Add the following line :
+Add the following line to the "bar" element:
 ```shell
 	status_command <PATH to i3_mTag_on_bar.sh>
 ```
