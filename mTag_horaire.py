@@ -95,6 +95,60 @@ def get_time_readable_simple(sec):
     return time_str
 
 
+"""
+Defines a bus time, two informations are available:
+    - arrivalTime - When does the bus arrive
+    - is_real_time - Is the time the scheduled or the real measured time
+
+"""
+class ArrivalTime:
+    def __init__(self, arrivalTime, is_real_time):
+        self.arrivalTime = arrivalTime
+        self.is_real_time = is_real_time
+    
+    def getTime(self):
+        return self.arrivalTime
+    
+    def isRealTime(self):
+        return self.is_real_time
+
+    def __lt__(self, other):
+        return self.arrivalTime < other.arrivalTime
+
+    def __repr__(self):
+        if (self.is_real_time):
+            return str(self.arrivalTime)
+        else :
+            return ("~" + str(self.arrivalTime))
+
+    def __str__(self):
+        return self.arrivalTime
+
+
+def get_bus_times_for_every_destination(json_list):
+    bus_times = {}
+    for bus_list in json_list:
+        temp_times = []
+        temp_pattern= ""
+        if bus_list["pattern"]:
+            temp_pattern = bus_list["pattern"]["desc"]
+        if bus_list["times"]:
+            for i in range(0,min(2,len(bus_list["times"]))):
+                # HERE CHECK IF BUS GOES TO THE DESIRED DESTINATION
+                temp_times.append( ArrivalTime(bus_list["times"][i]["realtimeArrival"],bus_list["times"][i]["realtime"]  ) )
+            temp_times.sort()
+            if(bus_times.get(temp_pattern) != None):
+                t = bus_times.get(temp_pattern)+temp_times
+                t.sort()
+                bus_times.update({temp_pattern: t})
+            else:
+                temp_times.sort()
+                bus_times.update({temp_pattern: temp_times })
+    return bus_times
+
+
+
+
 
 def send_get(url, headers={}, data={}):
     #print("Connecting to : ", url)
@@ -105,7 +159,6 @@ def send_get(url, headers={}, data={}):
     s = requests.Session()
     response = s.send(reqPrepared)
     return response
-
 
 
 def request_stoptimes(stop_to_check):
@@ -131,34 +184,41 @@ def request_stops_for_name(bus_id, name):
 
 
 def print_stoptimes_simple(json_list):
+    bus_times = get_bus_times_for_every_destination(json_list)
+
     out_string = ""
-    for bus_list in json_list:
-        if bus_list["pattern"]:
-            out_string += bus_list["pattern"]["shortDesc"][:8]
-        if bus_list["times"]:
-            out_string += ":["
-            for i in range(0,min(2,len(bus_list["times"]))):
-                 out_string += get_time_readable_simple(bus_list["times"][i]["realtimeArrival"])
-                 out_string += ","
-            out_string = out_string[:-1]
-            out_string += "]"
+    for dest in bus_times:
+        out_string += dest[:8]
+        out_string += ":["
+        for time in bus_times[dest]:
+            if not(time.isRealTime()):
+                out_string += "~"
+            out_string += get_time_readable_simple(time.getTime())
+            out_string += ","
+        out_string = out_string[:-1]
+        out_string += "] - "
+    out_string = out_string[:-3]
     print(out_string)
 
 
 def print_stoptimes(json_list):
-    for bus_list in json_list:
-        #print("bus_list",bus_list, end="\n\n")
-        if bus_list["pattern"]:
-            print("Bus en diréction de",bus_list["pattern"]["desc"], end="\n")
-        if bus_list["times"]:
-            for bus in bus_list["times"]:
-                print("    Arrivée à : ", get_time_readable(bus["realtimeArrival"]))
+    bus_times = get_bus_times_for_every_destination(json_list)
 
+    out_string = ""
+    for dest in bus_times:
+        out_string += "Bus en diréction de "+dest+"\n"
+        for time in bus_times[dest]:
+            out_string += "    Arrivée à : " + get_time_readable(time.getTime())
+            if not(time.isRealTime()):
+                out_string += " <- Scheduled time, not real time"
+            out_string += "\n"
+    print(out_string)
 
 
 def handle_response(response):
     try:
         json_response = response.json()
+        #print(json_response)
     except:
         print("[mTagPython] API is Broken")
         exit(0)
@@ -224,11 +284,13 @@ def print_custom(json_list, bus_times, to_work):
     return out_string
 
 
+
 def get_bus_times(json_list):
     bus_times = []
     for bus_list in json_list:
         if bus_list["times"]:
             for i in range(0,min(2,len(bus_list["times"]))):
+                # HERE CHECK IF BUS GOES TO THE DESIRED DESTINATION
                 bus_times.append(bus_list["times"][i]["realtimeArrival"])
     bus_times.sort()
     return bus_times
@@ -257,7 +319,7 @@ def print_to_home_from_work():
     if(len(bus_times_to_INRIA) != 0):
         final_str += print_custom(json_response, bus_times_to_INRIA, True)
     else:
-        final_str += "BROKEN_API_TO_HOME"
+        final_str += "BROKEN_API_TO_WORK"
     return final_str
 ###
 
@@ -284,7 +346,7 @@ def main():
         for stop in stops:
             #print("Stop : ",stop)
             stop_id = stop["gtfsId"]
-            print(stop)
+            #print(stop)
             response = request_stoptimes(stop_id)
             json_response = handle_response(response)
             if(args.simple):
