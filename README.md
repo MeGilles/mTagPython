@@ -25,3 +25,8 @@ Add the following line to the "bar" element:
 	status_command <PATH to i3_mTag_on_bar.sh>
 ```
 (You can also directly copy the script to the config file)
+
+# What is needed
+Line information : https://data.mobilites-m.fr/api/routers/default/index/routes?allRoutes=true
+Stop information : 
+Next pass
